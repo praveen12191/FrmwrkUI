@@ -22,56 +22,62 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# try:
-#     conn = pyodbc.connect(connection_string)
-#     print("Connected")
-#     cursor = conn.cursor()
-
-#     FRMWRKCONFIG_keys_Column = []
-#     Keys_Column = cursor.execute("SELECT TOP 0 * FROM FRMWRKCONFIG.keys")
-#     for column in Keys_Column.description:
-#         FRMWRKCONFIG_keys_Column.append(column)
-    
-#     FRMWRKCONFIG_sqlserverdelta_Column = []
-#     Sqlserverdelta_Column = cursor.execute("SELECT TOP 0 * FROM FRMWRKCONFIG.sqlserverdelta")
-#     for column in Sqlserverdelta_Column.description:
-#         FRMWRKCONFIG_sqlserverdelta_Column.append(column)
-    
-#     FRMWRKCONFIG_filter_Column = []
-#     Filter_Column = cursor.execute("SELECT TOP 0 * FROM FRMWRKCONFIG.sqlserverdelta")
-#     for column in Filter_Column.description:
-#         FRMWRKCONFIG_filter_Column.append(column)
-    
-#     FRMWRKCONFIG_ExcludeHash_Column = []
-#     ExcludeHash_Column = cursor.execute("SELECT TOP 0 * FROM FRMWRKCONFIG.ExcludeHash")
-#     for column in ExcludeHash_Column.description:
-#         FRMWRKCONFIG_ExcludeHash_Column.append(column)
-    
-#     FRMWRKCONFIG_projectorchestration_Column = []
-#     projectorchestration_Column = cursor.execute("SELECT TOP 0 * FROM FRMWRKCONFIG.projectorchestration")
-#     for column in projectorchestration_Column.description:
-#         FRMWRKCONFIG_projectorchestration_Column.append(column)
-    
-#     FRMWRKCONFIG_configserver_Column = []
-#     configserver_Column = cursor.execute("SELECT TOP 0 * FROM FRMWRKCONFIG.configserver")
-#     for column in configserver_Column.description:
-#         FRMWRKCONFIG_configserver_Column.append(column)
-
-
-
-
-    # Don't forget to close the cursor and connection when you're done
-#     cursor.close()
-#     conn.close()
-
-# except pyodbc.Error as e:
-#     print(f"Error connecting to SQL Server: {str(e)}")
-
-
+class TableName(BaseModel):
+     tablename : str
 
 @app.get("/tableName")
 def read_root():
     Table_Name = ['FRMWRKCONFIG.keys','FRMWRKCONFIG.sqlserverdelta','FRMWRKCONFIG.sqlserverdelta','FRMWRKCONFIG.ExcludeHash','FRMWRKCONFIG.projectorchestration','FRMWRKCONFIG.configserver']
     return Table_Name
+
+@app.post("/columnName")
+def columnName(value : TableName):
+    conn = pyodbc.connect(connection_string)
+    print("Connected")
+    cursor = conn.cursor()
+    tablename = value.tablename
+    Column = []
+    for column in cursor.execute("SELECT TOP 0 * FROM {}".format(tablename)).description:
+        Column.append(column[0])
+    cursor.close()
+    conn.close()
+    return JSONResponse(content=Column,status_code=200)
+
+
+class RowData(BaseModel):
+    values: list
+    tableName : str
+
+@app.post("/postdata")
+def post_data(row_data: RowData):
+    conn = pyodbc.connect(connection_string)
+    print("Connected")
+    cursor = conn.cursor()
+    columnValue = row_data.values
+    tableName = row_data.tableName
+    columnCount = 0 
+    print(columnValue)
+    values = []
+    for data in columnValue:
+        lis = []
+        columnCount = 0 
+        for i,j in data["values"].items():
+            columnCount+=1
+            lis.append(j)
+        values.append(lis)
+    print(columnCount)
+    columnValue = "(?"
+    for i in range(columnCount-1):
+        columnValue+=',?'
+    columnValue+=')'
+    insert_query = "INSERT INTO {} VALUES {}".format(tableName,columnValue)
+    print(insert_query)
+    print(values)
+    for row in values:
+        cursor.execute(insert_query, row)
+        conn.commit() 
+    cursor.close()
+    conn.close()
+    return {"message": "Data received successfully"}
 
 
