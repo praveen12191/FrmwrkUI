@@ -93,21 +93,23 @@ def post_data(row_data: RowData):
             selectQuery += "{}={} and ".format(x,y[0])
             rowcount = y[1]
         selectQuery = selectQuery[0:len(selectQuery)-4:]
-        cursor.execute(selectQuery)
-        rows = cursor.fetchall()
-        if(len(rows)):
+        print(selectQuery)
+        try:
+            cursor.execute(selectQuery)
+            rows = cursor.fetchall()
             return JSONResponse(content={'message':'Duplicate key Insertion','Rowcount':rowcount},status_code=202)
-    columnValue = "(?"
-    for i in range(columnCount-1):
-        columnValue+=',?'
-    columnValue+=')'
-    insert_query = "INSERT INTO {} VALUES {}".format(tableName,columnValue)
-    for row in values:
-        cursor.execute(insert_query, row)
-        conn.commit() 
-    cursor.close()
-    conn.close()
-    return {"message": "Data received successfully"}
+        except:
+            columnValue = "(?"
+            for i in range(columnCount-1):
+                columnValue+=',?'
+            columnValue+=')'
+            insert_query = "INSERT INTO {} VALUES {}".format(tableName,columnValue)
+            for row in values:
+                cursor.execute(insert_query, row)
+                conn.commit() 
+            cursor.close()
+            conn.close()
+            return {"message": "Data received successfully"}
 
 
 
